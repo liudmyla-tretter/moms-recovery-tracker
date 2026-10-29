@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f5f0ff">
+<title>Мій щоденник відновлення</title>
+<style>
+  :root { --ink:#25213a; --purple:#5b3fa3; --pale:#f5f0ff; --line:#d8d0eb; --green:#236b45; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#fbfaff; color:var(--ink); font-family:Arial,Helvetica,sans-serif; font-size:22px; line-height:1.4; }
+  main { width:min(100%,720px); margin:0 auto; padding:20px 16px 32px; }
+  h1 { font-size:clamp(30px,7vw,42px); line-height:1.15; margin:8px 0 8px; text-align:center; }
+  .subtitle { text-align:center; font-size:22px; margin:0 0 22px; }
+  .date { text-align:center; font-weight:bold; font-size:22px; margin-bottom:18px; }
+  .streak { background:var(--pale); border:2px solid var(--line); border-radius:20px; padding:18px 12px; text-align:center; margin-bottom:20px; }
+  .diamond { font-size:64px; line-height:1.2; }
+  .count { font-size:clamp(30px,7vw,40px); font-weight:800; color:var(--purple); }
+  .streak p { margin:4px 0 0; font-size:20px; }
+  h2 { font-size:27px; margin:20px 0 12px; }
+  .task { display:flex; gap:14px; align-items:center; background:white; border:2px solid var(--line); border-radius:16px; padding:16px 14px; margin:12px 0; min-height:90px; cursor:pointer; }
+  .task:has(input:checked) { border-color:#65a982; background:#f0fbf4; }
+  input[type=checkbox] { width:34px; height:34px; flex:0 0 34px; accent-color:var(--green); }
+  .task label { cursor:pointer; font-size:23px; font-weight:700; }
+  .hint { font-size:18px; color:#514b64; margin:14px 2px; }
+  .message { text-align:center; padding:16px; border-radius:16px; background:#fff8df; border:2px solid #eadb9d; font-size:22px; font-weight:bold; margin-top:18px; }
+  .message.done { background:#effaf3; border-color:#9bc9aa; color:var(--green); }
+  button { display:block; width:100%; border:0; border-radius:14px; background:var(--purple); color:white; font-size:22px; font-weight:bold; padding:16px; margin-top:18px; min-height:60px; }
+  button:focus-visible, input:focus-visible, .task:focus-within { outline:4px solid #e2b84d; outline-offset:3px; }
+  .small { text-align:center; font-size:16px; color:#625c70; margin-top:20px; }
+  .reset { background:transparent; color:#625c70; border:1px solid #c9c2d6; font-size:16px; padding:10px; min-height:44px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Мій щоденник відновлення</h1>
+  <p class="subtitle">Крок за кроком — до кращого самопочуття 💜</p>
+  <div class="date" id="today"></div>
+
+  <section class="streak" aria-live="polite">
+    <div class="diamond" aria-hidden="true">💎</div>
+    <div class="count"><span id="streak">0</span> <span id="diamondWord">діамантів</span></div>
+    <p>Ваші діаманти за дні поспіль</p>
+    <p id="streakNote">Виконайте всі 4 завдання, щоб отримати діамант!</p>
+  </section>
+
+  <h2>Мої завдання на сьогодні</h2>
+  <div class="task">
+    <input id="stairs1" type="checkbox" aria-label="Піднятися на 5 поверхів вранці">
+    <label for="stairs1">🚶‍♀️ Пройти 5 поверхів сходами — вранці</label>
+  </div>
+  <div class="task">
+    <input id="stairs2" type="checkbox" aria-label="Піднятися на 5 поверхів увечері">
+    <label for="stairs2">🚶‍♀️ Пройти 5 поверхів сходами — увечері</label>
+  </div>
+  <div class="task">
+    <input id="walk" type="checkbox" aria-label="Прогулятися надворі 15 хвилин у бадьорому темпі">
+    <label for="walk">🌳 Прогулятися надворі 15 хвилин у бадьорому темпі</label>
+  </div>
+  <div class="task">
+    <input id="squats" type="checkbox" aria-label="Зробити 15 присідань, тримаючи банки з квасолею">
+    <label for="squats">🥫 Зробити 15 присідань, тримаючи банки з квасолею</label>
+  </div>
+
+  <div class="message" id="message" role="status">Зробіть перше завдання — і вперед! Ви молодець! 💪</div>
+  <button id="save">Зберегти сьогоднішній результат</button>
+  <p class="hint">💜 Якщо сьогодні виконані всі 4 завдання, ви отримуєте один діамант. Пропущений день обнуляє серію — завтра можна почати нову!</p>
+  <p class="hint">Виконуйте вправи лише в межах рекомендацій лікаря. Якщо з’являються біль у грудях, сильна задишка, запаморочення або незвична слабкість — зупиніться та зверніться по медичну допомогу.</p>
+  <button class="reset" id="reset">Очистити позначки за сьогодні</button>
+  <p class="small">Позначки зберігаються в цьому браузері на цьому пристрої.</p>
+</main>
+<script>
+(() => {
+  const ids = ['stairs1','stairs2','walk','squats'];
+  const todayKey = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  };
+  const keyFor = date => 'recovery-tracker-' + date;
+  const read = date => {
+    try { return JSON.parse(localStorage.getItem(keyFor(date))) || {checks:[], complete:false}; }
+    catch { return {checks:[], complete:false}; }
+  };
+  const write = (date, data) => localStorage.setItem(keyFor(date), JSON.stringify(data));
+  const allDone = checks => ids.every(id => checks.includes(id));
+  const getStreak = () => {
+    const today = new Date();
+    const current = todayKey();
+    const todayData = read(current);
+    let cursor = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    if (!todayData.complete) cursor.setDate(cursor.getDate()-1);
+    let count = 0;
+    for (let i=0; i<500; i++) {
+      const k = `${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,'0')}-${String(cursor.getDate()).padStart(2,'0')}`;
+      if (!read(k).complete) break;
+      count++;
+      cursor.setDate(cursor.getDate()-1);
+    }
+    return count;
+  };
+  const ukDate = new Intl.DateTimeFormat('uk-UA', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  const today = todayKey();
+  document.getElementById('today').textContent = ukDate.format(new Date());
+  let data = read(today);
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    el.checked = data.checks.includes(id);
+    el.addEventListener('change', () => {
+      data.checks = ids.filter(x => document.getElementById(x).checked);
+      data.complete = allDone(data.checks);
+      write(today, data);
+      update();
+    });
+  });
+  function update() {
+    const done = allDone(data.checks);
+    data.complete = done;
+    write(today, data);
+    document.getElementById('streak').textContent = getStreak();
+    document.getElementById('diamondWord').textContent = getStreak() === 1 ? 'діамант' : (getStreak() >= 2 && getStreak() <= 4 ? 'діаманти' : 'діамантів');
+    const message = document.getElementById('message');
+    const note = document.getElementById('streakNote');
+    if (done) {
+      message.textContent = 'Усі 4 завдання виконано! Ви заслужили діамант! 💎';
+      message.className = 'message done';
+      note.textContent = 'Чудова робота! Повертайтеся завтра за наступним діамантом.';
+    } else {
+      const left = 4 - data.checks.length;
+      message.textContent = data.checks.length ? `Чудово! Залишилося завдань: ${left}. Ви впораєтеся!` : 'Зробіть перше завдання — і вперед! Ви молодець! 💪';
+      message.className = 'message';
+      note.textContent = 'Виконайте всі 4 завдання, щоб отримати діамант!';
+    }
+  }
+  document.getElementById('save').addEventListener('click', () => {
+    data.checks = ids.filter(id => document.getElementById(id).checked);
+    data.complete = allDone(data.checks);
+    write(today, data);
+    update();
+    document.getElementById('message').scrollIntoView({behavior:'smooth', block:'center'});
+  });
+  document.getElementById('reset').addEventListener('click', () => {
+    if (!confirm('Очистити всі позначки за сьогодні?')) return;
+    data = {checks:[], complete:false};
+    ids.forEach(id => document.getElementById(id).checked = false);
+    write(today, data);
+    update();
+  });
+  update();
+})();
+</script>
+</body>
+</html>
